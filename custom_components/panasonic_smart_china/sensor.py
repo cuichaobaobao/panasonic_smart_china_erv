@@ -193,7 +193,8 @@ def _specs_for_coordinator(coordinator) -> tuple[ERVSensorSpec, ...]:
         return tuple(
             spec
             for spec in SENSOR_SPECS
-            if spec.key in data_keys or SENSOR_ALIASES.get(spec.key) in data_keys
+            if spec.key != "resFilClTL"
+            and (spec.key in data_keys or SENSOR_ALIASES.get(spec.key) in data_keys)
         )
     return tuple(
         spec

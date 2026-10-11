@@ -223,3 +223,34 @@ class LD6CDiscoveryTests(unittest.IsolatedAsyncioTestCase):
                 self.assertTrue(any("erv-two" in value for value in ids))
                 for unsubscribe in cleanup:
                     unsubscribe()
+
+
+class ProtocolBoundaryTests(unittest.IsolatedAsyncioTestCase):
+    async def test_unknown_protocol_retains_existing_sensor_discovery(self):
+        coordinator = FakeCoordinator(
+            {"raPMC": 12, "resFilClTL": 48, "oaTeC": 23}, subtype="UNKNOWN"
+        )
+        self.assertEqual(
+            {spec.key for spec in sensor._specs_for_coordinator(coordinator)},
+            {"raPMC", "oaTeC"},
+        )
+
+    async def test_auto_protocol_can_resolve_to_ld6c(self):
+        coordinator = FakeCoordinator(
+            {"resFilClTL": 48, "breathLight": 1}, subtype="AUTO"
+        )
+        account = SimpleNamespace(coordinators={coordinator.device_id: coordinator})
+        cleanup = []
+        entry = SimpleNamespace(async_on_unload=cleanup.append)
+        sensors, lights = [], []
+        await sensor.async_setup_entry(account, entry, sensors.extend)
+        await light.async_setup_entry(account, entry, lights.extend)
+        self.assertEqual(sensors, [])
+        self.assertEqual(lights, [])
+        coordinator.device_subtype = "LD6C"
+        coordinator.update({"resFilClTL": 48, "breathLight": 1})
+        self.assertTrue(any(item._spec.key == "resFilClTL" for item in sensors))
+        self.assertEqual(len(lights), 1)
+        for unsubscribe in cleanup:
+            unsubscribe()
+        self.assertEqual(coordinator.listeners, [])
